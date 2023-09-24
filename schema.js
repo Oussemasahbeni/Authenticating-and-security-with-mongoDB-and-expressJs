@@ -3,6 +3,7 @@ import encrypt from "mongoose-encryption";
 import "dotenv/config";
 import passportLocalMongoose from "passport-local-mongoose";
 import passport from "passport";
+import findOrCreate from "mongoose-findorcreate";
 const { Schema, model } = mongoose;
 const userSchema = new Schema({
   email: String,
@@ -44,7 +45,7 @@ console.log(process.env.SECRET);
 // we use to hash and salt our password and save our users in our db
 // we set up userschem
 userSchema.plugin(passportLocalMongoose);
-
+userSchema.plugin(findOrCreate);
 const User = model("User", userSchema);
 //passport-local-mongoose to createa a local login strategy
 passport.use(User.createStrategy());
@@ -52,4 +53,5 @@ passport.use(User.createStrategy());
 // we tell passport to serialize and deserialize our user
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
+
 export default User;
