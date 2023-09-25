@@ -59,7 +59,7 @@ passport.use(
       userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo",
     },
     function (accessToken, refreshToken, profile, cb) {
-      // console.log(profile);
+      console.log(profile);
       User.findOrCreate({ googleId: profile.id }, function (err, user) {
         return cb(err, user);
       });
@@ -88,6 +88,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/login", (req, res) => {
+  console.log(req.body.username);
   res.render("login");
 });
 
@@ -95,12 +96,11 @@ app.get("/register", (req, res) => {
   res.render("register");
 });
 
-app.get("/secrets", (req, res) => {
-  if (req.isAuthenticated()) {
-    res.render("secrets");
-  } else {
-    res.redirect("/login");
-  }
+app.get("/secrets", async (req, res) => {
+  let users = await User.find({ secret: { $ne: null } }).exec();
+
+  console.log("users", users);
+  res.render("secrets", { usersWithSecrets: users });
 });
 
 app.post("/register", async (req, res) => {
