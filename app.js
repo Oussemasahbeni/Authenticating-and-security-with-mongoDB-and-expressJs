@@ -13,7 +13,7 @@ const port = 3000;
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 app.set("view engine", "ejs");
-
+// middlewares for session and passport
 app.use(
   session({
     secret: "keyboard cat",
@@ -33,6 +33,7 @@ const userSchema = new mongoose.Schema({
   googleId: String,
   secret: String,
 });
+
 userSchema.plugin(passportLocalMongoose);
 userSchema.plugin(findOrCreate);
 
@@ -43,7 +44,11 @@ passport.use(User.createStrategy());
 passport.serializeUser(function (user, done) {
   done(null, user.id);
 });
-passport.deserializeUser(User.deserializeUser());
+passport.deserializeUser(function (user, cb) {
+  process.nextTick(function () {
+    return cb(null, user);
+  });
+});
 
 passport.use(
   new GoogleStrategy(
@@ -54,7 +59,7 @@ passport.use(
       userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo",
     },
     function (accessToken, refreshToken, profile, cb) {
-      console.log(profile);
+      // console.log(profile);
       User.findOrCreate({ googleId: profile.id }, function (err, user) {
         return cb(err, user);
       });
@@ -91,7 +96,11 @@ app.get("/register", (req, res) => {
 });
 
 app.get("/secrets", (req, res) => {
-  res.render("secrets");
+  if (req.isAuthenticated()) {
+    res.render("secrets");
+  } else {
+    res.redirect("/login");
+  }
 });
 
 app.post("/register", async (req, res) => {
@@ -101,7 +110,7 @@ app.post("/register", async (req, res) => {
       req.body.password
     );
     passport.authenticate("local")(req, res, function () {
-      res.redirect("/secrets");
+      res.render("secrets");
     });
   } catch (err) {
     console.log(err);
@@ -125,6 +134,38 @@ app.post("/login", async (req, res) => {
       });
     }
   });
+});
+
+app.get("/submit", (req, res) => {
+  console.log("authenticate", req.isAuthenticated());
+  if (req.isAuthenticated()) {
+    res.render("submit");
+  } else {
+    res.redirect("/login");
+  }
+  // res.render("submit");
+});
+
+app.post("/submit", async (req, res) => {
+  const submittedSecret = req.body.secret;
+
+  // console.log(req);
+  /* sessionID: '6ZIUGmbMsP4J_hw6RS5f8AEUwR8vwKMx',
+  session: Session {
+    cookie: { path: '/', _expires: null, originalMaxAge: null, httpOnly: true },
+    passport: { user: '6510bac8c5d021ce39c10dad' }*/
+  console.log("req user", req.user); // gives us the user id who is currently logged in
+  try {
+    const savedUser = await User.findById(req.user);
+    if (savedUser) {
+      savedUser.secret = submittedSecret;
+      await savedUser.save();
+      res.redirect("/secrets");
+    }
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("Internal server error");
+  }
 });
 
 app.get("/logout", (req, res) => {
