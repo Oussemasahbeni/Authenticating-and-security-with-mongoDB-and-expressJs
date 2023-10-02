@@ -104,13 +104,16 @@ app.get("/secrets", async (req, res) => {
 });
 
 app.post("/register", async (req, res) => {
+  console.log(req.body.username);
+  console.log(req.body.password);
   try {
     const user = await User.register(
       { username: req.body.username },
       req.body.password
     );
+    let users = await User.find({ secret: { $ne: null } }).exec();
     passport.authenticate("local")(req, res, function () {
-      res.render("secrets");
+      res.render("secrets", { usersWithSecrets: users });
     });
   } catch (err) {
     console.log(err);
@@ -119,6 +122,7 @@ app.post("/register", async (req, res) => {
 });
 
 app.post("/login", async (req, res) => {
+  console.log(req.body.username);
   const user = new User({
     username: req.body.username,
     password: req.body.password,
